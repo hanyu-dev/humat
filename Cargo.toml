@@ -1,0 +1,72 @@
+[package]
+name = "human-format-next"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.59.0"
+
+# === Publication info ===
+authors = ["Hantong Chen <cxwdyx620@gmail.com>"]
+categories = ["value-formatting"]
+description = "Formatting numbers for us, while the machines are still at bay."
+keywords = ["numbers", "formatting", "filesize", "human", "magnitude"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/cxw620/human-format"
+
+[dependencies]
+# bytes = { version = "1.2.0", default-features = false, optional = true }
+# macro-toolset = { version = "0.8.2", default-features = false, features = ["feat-string"], optional = true }
+
+[dev-dependencies]
+criterion = "0.5.1"
+human_format = "1.1"
+
+[features]
+# default = ["feat-macro-toolset"]
+
+# # Integration with crate `macro-toolset`
+# feat-macro-toolset = ["dep:macro-toolset", "dep:bytes"]
+
+[[bench]]
+name = "human_format"
+path = "benches/human_format.rs"
+harness = false
+
+# === Lints config ===
+
+[lints.rust]
+unsafe_code = "warn"
+missing_docs = "warn"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+
+[lints.clippy]
+# allow_attributes_without_reason = "warn"
+assertions_on_result_states = "warn"
+assigning_clones = "warn"
+bool_to_int_with_if = "warn"
+cognitive_complexity = "warn"
+create_dir = "warn"
+dbg_macro = "warn"
+debug_assert_with_mut_call = "warn"
+default_trait_access = "warn"
+disallowed_script_idents = "deny"
+doc_link_with_quotes = "warn"
+doc_markdown = "warn"
+else_if_without_else = "deny"
+enum_glob_use = "warn"
+filetype_is_file = "warn"
+inefficient_to_string = "warn"
+mem_forget = "warn"
+missing_panics_doc = "warn"
+mod_module_files = "deny"
+multiple_inherent_impl = "warn"
+mutex_atomic = "warn"
+mutex_integer = "warn"
+needless_continue = "warn"
+panic = "warn"
+significant_drop_in_scrutinee = "warn"
+todo = "warn"
+unimplemented = "warn"
+wildcard_dependencies = "deny"
+wildcard_imports = "warn"
