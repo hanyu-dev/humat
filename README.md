@@ -10,7 +10,7 @@ The primary purpose for this crate is to format numbers in a customizable fashio
 
 ## MSRV
 
-1.59.0
+1.75.0
 
 ## License
 
