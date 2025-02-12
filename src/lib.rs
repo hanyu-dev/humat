@@ -4,6 +4,9 @@ use std::fmt;
 
 #[derive(Debug, Clone, Copy)]
 /// Entry point to the lib. Use this to handle your formatting needs.
+///
+/// - `BASE`: the base
+/// - `DECIMALS`: target decimal places (if not keeping the original number)
 pub struct Formatter<const BASE: usize = 0, const DECIMALS: usize = 2> {
     /// Separator between numbers and units.
     ///
@@ -56,6 +59,9 @@ impl<const BASE: usize, const DECIMALS: usize> Formatter<BASE, DECIMALS> {
         self,
         units: &'static [&'static str],
     ) -> Formatter<N_BASE, DECIMALS> {
+        // wait for feature `generic_const_exprs`
+        debug_assert!(BASE > 0, "BASE CANNOT BE 0");
+
         Formatter {
             separator: self.separator,
             units,
@@ -75,6 +81,12 @@ impl<const BASE: usize, const DECIMALS: usize> Formatter<BASE, DECIMALS> {
     #[inline]
     /// Set the decimal places to keep.
     pub const fn with_decimals<const N_DECIMALS: usize>(self) -> Formatter<BASE, N_DECIMALS> {
+        // wait for feature `generic_const_exprs`
+        debug_assert!(
+            N_DECIMALS <= f64::DIGITS as usize,
+            "DECIMALS too large, for RELEASE profile will make use of f64::DIGITS",
+        );
+
         Formatter {
             separator: self.separator,
             units: self.units,
@@ -85,32 +97,53 @@ impl<const BASE: usize, const DECIMALS: usize> Formatter<BASE, DECIMALS> {
     #[inline]
     /// Formats the given `number` into a human-readable string using the
     /// specified units and separator.
-    pub fn format_int(&self, number: impl Into<isize>) -> FormatResult<DECIMALS> {
-        let number: isize = number.into();
+    ///
+    /// See [`NumberT`] for all types we accept as param.
+    ///
+    /// # Notice
+    ///
+    /// For better performance (may be so), you may need
+    /// [`format_int`](Self::format_int) or [`format_uint`](Self::format_uint).
+    ///
+    /// # Limitation
+    ///
+    /// `f64` can only handle 15 decimal places at most. We may introduce
+    /// `macro_toolset` for large number formatting.
+    pub fn format(&self, number: impl NumberT) -> FormatResult<DECIMALS> {
+        if let Some(integer) = number.integer() {
+            self.format_general(integer, number.fraction())
+                .set_result_is_negative(number.is_negative())
+        } else {
+            self.format_float(
+                number
+                    .fraction()
+                    .expect("must be floating number which is too large"),
+            )
+        }
+    }
 
-        self.format(number.unsigned_abs(), None)
+    #[inline]
+    /// Formats the given `number` into a human-readable string using the
+    /// specified units and separator.
+    ///
+    /// We accept any number that fits into `isize`. For `i128`, see
+    /// [`format_large_int`](Self::format_large_int).
+    pub fn format_int(&self, number: impl Into<i128>) -> FormatResult<DECIMALS> {
+        let number: i128 = number.into();
+
+        self.format_general(number.unsigned_abs(), None)
             .set_result_is_negative(number.is_negative())
     }
 
     #[inline]
     /// Formats the given `number` into a human-readable string using the
     /// specified units and separator.
-    pub fn format_uint(&self, number: impl Into<usize>) -> FormatResult<DECIMALS> {
-        self.format(number.into(), None)
-    }
-
-    #[inline]
-    /// Formats the given `number` into a human-readable string using the
-    /// specified units and separator.
-    pub fn format_float(&self, number: f64) -> FormatResult<DECIMALS> {
-        self.format(number.trunc() as _, Some(number.fract()))
+    pub fn format_uint(&self, number: impl Into<u128>) -> FormatResult<DECIMALS> {
+        self.format_general(number.into(), None)
     }
 
     /// Formats the given `number` into a human-readable string using the
     /// specified units and separator.
-    ///
-    /// We recommend that you use [`format_float`](Self::format_float) or
-    /// [`format_int`](Self::format_int).
     ///
     /// # Params
     ///
@@ -119,15 +152,15 @@ impl<const BASE: usize, const DECIMALS: usize> Formatter<BASE, DECIMALS> {
     /// - `fraction`: the fractional part of the number.
     ///   - For float, [`f32::fract`] or [`f64::fract`] may helps you.
     ///   - For integer, leave it `None`.
-    pub fn format(&self, integer: usize, fraction: Option<f64>) -> FormatResult<DECIMALS> {
-        if integer < BASE || { BASE == 0 } || { DECIMALS > f64::DIGITS as usize } {
-            // Wait for feature `generic_const_exprs`
-            debug_assert!(BASE > 0, "BASE CANNOT BE 0");
-            debug_assert!(
-                DECIMALS <= f64::DIGITS as usize,
-                "DECIMALS too large, for RELEASE profile will make use of {}",
-                f64::DIGITS
-            );
+    ///
+    /// # Notice
+    ///
+    /// It's NOT recommended that you use this directly, use
+    /// [`format`](Self::format) instead unless you know exactly what you do.
+    pub fn format_general(&self, integer: u128, fraction: Option<f64>) -> FormatResult<DECIMALS> {
+        let base = BASE as u128;
+
+        if integer < base {
             return FormatType::General {
                 integer,
                 fraction,
@@ -139,19 +172,15 @@ impl<const BASE: usize, const DECIMALS: usize> Formatter<BASE, DECIMALS> {
         let mut index: usize = 0;
         let mut value = integer;
 
-        loop {
-            value /= BASE;
+        while value >= base {
+            value /= base;
             index += 1;
-
-            if value < BASE {
-                break;
-            }
         }
 
         match self.units.get(index - 1) {
             Some(&unit) => {
                 let leftover = {
-                    let leftover_exp = BASE.pow(index as u32);
+                    let leftover_exp = (base).pow(index as u32);
                     (integer - value * leftover_exp) as f64 / leftover_exp as f64
                 };
 
@@ -159,7 +188,7 @@ impl<const BASE: usize, const DECIMALS: usize> Formatter<BASE, DECIMALS> {
                 let leftover_fraction = fraction.unwrap_or(0.0) + leftover.fract();
 
                 FormatType::General {
-                    integer: value + leftover.trunc() as usize + leftover_fraction.trunc() as usize,
+                    integer: value + leftover.trunc() as u128 + leftover_fraction.trunc() as u128,
                     fraction: Some(leftover_fraction.fract()),
                     unit: Some(unit),
                 }
@@ -174,7 +203,7 @@ impl<const BASE: usize, const DECIMALS: usize> Formatter<BASE, DECIMALS> {
                     value /= 10;
                     exponent += 1;
 
-                    if value < target_len {
+                    if value < target_len as _ {
                         break;
                     }
                 }
@@ -199,6 +228,162 @@ impl<const BASE: usize, const DECIMALS: usize> Formatter<BASE, DECIMALS> {
             }
         }
         .formatter_result(self)
+    }
+
+    /// Formats the given `number` into a human-readable string using the
+    /// specified units and separator.
+    ///
+    /// # Notice
+    ///
+    /// It's NOT recommended that you use this directly, floating point
+    /// calculation often slower than integer arithmetic. Use
+    /// [`format`](Self::format) instead unless you know exactly what you do.
+    pub fn format_float(&self, number: f64) -> FormatResult<DECIMALS> {
+        let base = BASE as f64;
+        if number < base {
+            return FormatType::Float { number, unit: None }.formatter_result(self);
+        }
+
+        let mut index: usize = 0;
+        let mut value = number;
+
+        while value >= base {
+            value /= base;
+            index += 1;
+        }
+
+        match self.units.get(index - 1) {
+            Some(&unit) => {
+                let leftover = {
+                    let leftover_exp = base.powi(index as i32);
+                    (number - value * leftover_exp) / leftover_exp
+                };
+
+                FormatType::Float {
+                    number: value + leftover,
+                    unit: Some(unit),
+                }
+            }
+            None => {
+                let value = number.log10();
+
+                FormatType::Scientific {
+                    coefficient: 10.0f64.powf(value.fract()),
+                    exponent: value.trunc() as _,
+                }
+            }
+        }
+        .formatter_result(self)
+    }
+}
+
+#[allow(private_bounds)]
+/// Sealed trait for number that can be formatted, including:
+///
+/// - `u8`
+/// - `u16`
+/// - `u32`
+/// - `u64`
+/// - `u128`
+/// - `i8`
+/// - `i16`
+/// - `i32`
+/// - `i64`
+/// - `i128`
+/// - `f32`
+/// - `f64`
+pub trait NumberT: number_sealed::NumberT {}
+
+impl<T: number_sealed::NumberT> NumberT for T {}
+
+mod number_sealed {
+    pub(super) trait NumberT: Copy {
+        fn is_negative(self) -> bool;
+
+        fn integer(self) -> Option<u128>;
+
+        #[inline]
+        fn fraction(self) -> Option<f64> {
+            None
+        }
+    }
+
+    macro_rules! impl_number_trait {
+        (UINT: $($ty:ident),+) => {
+            $(
+                impl NumberT for $ty {
+                    #[inline]
+                    fn is_negative(self) -> bool {
+                        false
+                    }
+
+                    #[inline]
+                    fn integer(self) -> Option<u128> {
+                        Some(self as _)
+                    }
+                }
+            )+
+        };
+        (INT: $($ty:ident),+) => {
+            $(
+                impl NumberT for $ty {
+                    #[inline]
+                    fn is_negative(self) -> bool {
+                        self < 0
+                    }
+
+                    #[inline]
+                    fn integer(self) -> Option<u128> {
+                        Some(self.unsigned_abs() as _)
+                    }
+                }
+            )+
+        };
+    }
+
+    impl_number_trait!(UINT: u8, u16, u32, u64, usize, u128);
+    impl_number_trait!(INT: i8, i16, i32, i64, isize, i128);
+
+    impl NumberT for f32 {
+        #[inline]
+        fn is_negative(self) -> bool {
+            self < 0.0
+        }
+
+        #[inline]
+        fn integer(self) -> Option<u128> {
+            Some(self.trunc() as _)
+        }
+
+        #[inline]
+        fn fraction(self) -> Option<f64> {
+            Some(self.fract() as _)
+        }
+    }
+
+    impl NumberT for f64 {
+        #[inline]
+        fn is_negative(self) -> bool {
+            self < 0.0
+        }
+
+        #[inline]
+        fn integer(self) -> Option<u128> {
+            if self < 3.40282366920938e+38 {
+                Some(self.trunc() as _)
+            } else {
+                None
+            }
+        }
+
+        #[inline]
+        fn fraction(self) -> Option<f64> {
+            if self < 3.40282366920938e+38 {
+                Some(self.fract() as _)
+            } else {
+                Some(self as _)
+            }
+        }
     }
 }
 
@@ -248,6 +433,21 @@ impl<const DECIMALS: usize> fmt::Display for FormatResult<DECIMALS> {
                     "{integer}{fraction}{separator_before_unit}{unit}{custom_unit}",
                 )
             }
+            FormatType::Float { number, unit } => {
+                // Keep 15, f64::DIGITS
+                let number = format!("{number:.15}");
+                let digits = (f64::DIGITS as usize).min(DECIMALS);
+                let number = &number[1..digits + 2];
+
+                let separator_before_unit = if (*unit).is_some() {
+                    self.separator
+                } else {
+                    ""
+                };
+                let unit = (*unit).unwrap_or_default();
+
+                write!(f, "{number}{separator_before_unit}{unit}{custom_unit}",)
+            }
             FormatType::Scientific {
                 coefficient: value,
                 exponent,
@@ -282,10 +482,19 @@ enum FormatType<const DECIMALS: usize> {
     /// General
     General {
         /// The integer part.
-        integer: usize,
+        integer: u128,
 
         /// The fractional part.
         fraction: Option<f64>,
+
+        /// The abbreviated number's unit.
+        unit: Option<&'static str>,
+    },
+
+    /// General
+    Float {
+        /// The integer part.
+        number: f64,
 
         /// The abbreviated number's unit.
         unit: Option<&'static str>,
