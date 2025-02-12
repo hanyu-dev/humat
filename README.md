@@ -2,7 +2,7 @@
 
 ![Crates.io Version](https://img.shields.io/crates/v/human-format-next)
 ![Documentation](https://img.shields.io/docsrs/human-format-next)
-![GitHub Tag](https://img.shields.io/github/v/tag/cxw620/human-format-next)
+![GitHub Tag](https://img.shields.io/github/v/tag/hanyu-dev/human-format-next)
 
 Formatting numbers for us, while the machines are still at bay.
 
