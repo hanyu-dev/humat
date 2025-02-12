@@ -7,9 +7,13 @@ fn bench_3rd_crate(c: &mut Criterion) {
 
     let human_format = human_format::Formatter::new();
     let human_format_next = human_format_next::Formatter::SI;
+    let human_format_next_old = human_format_next_old::Formatter::SI;
 
     group.bench_function("human_format/0", |b| {
         b.iter(|| std::hint::black_box(human_format.format(0.0)));
+    });
+    group.bench_function("human_format_next/v0.1.0/0", |b| {
+        b.iter(|| std::hint::black_box(human_format_next_old.format(0, None).to_string()));
     });
     group.bench_function("human_format_next/0", |b| {
         b.iter(|| std::hint::black_box(human_format_next.format_general(0, None).to_string()));
@@ -18,6 +22,9 @@ fn bench_3rd_crate(c: &mut Criterion) {
     let u32_max_f64 = 0xFFFFFFFFu32 as f64;
     group.bench_function("human_format/u32::MAX", |b| {
         b.iter(|| std::hint::black_box(human_format.format(u32_max_f64)));
+    });
+    group.bench_function("human_format_next/v0.1.0/u32::MAX", |b| {
+        b.iter(|| std::hint::black_box(human_format_next_old.format(0xFFFFFFFF, None).to_string()));
     });
     group.bench_function("human_format_next/u32::MAX", |b| {
         b.iter(|| std::hint::black_box(human_format_next.format_general(0xFFFFFFFF, None).to_string()));

@@ -20,6 +20,7 @@ repository = "https://github.com/hanyu-dev/human-format"
 [dev-dependencies]
 criterion = "0.5.1"
 human_format = "1.1"
+human-format-next-old = { version = "=0.1.0", package = "human-format-next" }
 
 [features]
 # default = ["feat-macro-toolset"]
