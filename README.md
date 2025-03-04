@@ -8,6 +8,8 @@ Formatting numbers for us, while the machines are still at bay.
 
 The primary purpose for this crate is to format numbers in a customizable fashion based around magnitudes.
 
+`no_std` support is partially added! Though we just print the integer part now.
+
 ## MSRV
 
 1.75.0
@@ -20,6 +22,3 @@ MIT License.
 
 This crate is inspired by [BobGneu/human-format-rs](https://github.com/BobGneu/human-format-rs), about 20x faster.
 If you just want a simple and fast solution, this crate is for you.
-
-While [BobGneu/human-format-rs](https://github.com/BobGneu/human-format-rs) has `no_std` support, this crate does
-not provide such functionality since it depends heavily on std `f64` methods.

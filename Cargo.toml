@@ -23,7 +23,9 @@ human_format = "1.1"
 human-format-next-old = { version = "=0.1.0", package = "human-format-next" }
 
 [features]
-# default = ["feat-macro-toolset"]
+default = ["std"]
+
+std = []
 
 # # Integration with crate `macro-toolset`
 # feat-macro-toolset = ["dep:macro-toolset", "dep:bytes"]

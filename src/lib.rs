@@ -1,6 +1,8 @@
 //! Human-format-next
 
-use std::fmt;
+#![cfg_attr(not(feature = "std"), no_std)]
+
+use core::fmt;
 
 #[derive(Debug, Clone, Copy)]
 /// Entry point to the lib. Use this to handle your formatting needs.
@@ -114,11 +116,20 @@ impl<const BASE: usize, const DECIMALS: usize> Formatter<BASE, DECIMALS> {
             self.format_general(integer, number.fraction())
                 .set_result_is_negative(number.is_negative())
         } else {
-            self.format_float(
-                number
-                    .fraction()
-                    .expect("must be floating number which is too large"),
-            )
+            #[cfg(feature = "std")]
+            {
+                self.format_float(
+                    number
+                        .fraction()
+                        .expect("must be floating number which is too large"),
+                )
+            }
+
+            #[cfg(not(feature = "std"))]
+            #[allow(unsafe_code)]
+            unsafe {
+                core::hint::unreachable_unchecked()
+            }
         }
     }
 
@@ -184,13 +195,42 @@ impl<const BASE: usize, const DECIMALS: usize> Formatter<BASE, DECIMALS> {
                     (integer - value * leftover_exp) as f64 / leftover_exp as f64
                 };
 
-                // fraction may be larger than 1.
-                let leftover_fraction = fraction.unwrap_or(0.0) + leftover.fract();
+                #[cfg(feature = "std")]
+                {
+                    // fraction may be larger than 1.
+                    let leftover_fraction = fraction.unwrap_or(0.0) + leftover.fract();
 
-                FormatType::General {
-                    integer: value + leftover.trunc() as u128 + leftover_fraction.trunc() as u128,
-                    fraction: Some(leftover_fraction.fract()),
-                    unit: Some(unit),
+                    FormatType::General {
+                        integer: value
+                            + leftover.trunc() as u128
+                            + leftover_fraction.trunc() as u128,
+                        fraction: Some(leftover_fraction.fract()),
+                        unit: Some(unit),
+                    }
+                }
+
+                #[cfg(not(feature = "std"))]
+                {
+                    let mut leftover = leftover;
+
+                    // fraction may be larger than 1.
+                    let mut integer = value;
+                    while leftover >= 1.0 {
+                        leftover -= 1.0;
+                        integer += 1;
+                    }
+
+                    let mut fraction = leftover + fraction.unwrap_or(0.0);
+                    while fraction >= 1.0 {
+                        fraction -= 1.0;
+                        integer += 1;
+                    }
+
+                    FormatType::General {
+                        integer,
+                        fraction: Some(fraction),
+                        unit: Some(unit),
+                    }
                 }
             }
             None => {
@@ -230,6 +270,7 @@ impl<const BASE: usize, const DECIMALS: usize> Formatter<BASE, DECIMALS> {
         .formatter_result(self)
     }
 
+    #[cfg(feature = "std")]
     /// Formats the given `number` into a human-readable string using the
     /// specified units and separator.
     ///
@@ -344,6 +385,7 @@ mod number_sealed {
     impl_number_trait!(UINT: u8, u16, u32, u64, usize, u128);
     impl_number_trait!(INT: i8, i16, i32, i64, isize, i128);
 
+    #[cfg(feature = "std")]
     impl NumberT for f32 {
         #[inline]
         fn is_negative(self) -> bool {
@@ -361,6 +403,7 @@ mod number_sealed {
         }
     }
 
+    #[cfg(feature = "std")]
     impl NumberT for f64 {
         #[inline]
         fn is_negative(self) -> bool {
@@ -407,67 +450,82 @@ impl<const DECIMALS: usize> fmt::Display for FormatResult<DECIMALS> {
         match self.result {
             FormatType::General {
                 integer,
-                fraction,
+                fraction: _fraction,
                 unit,
             } => {
+                write!(f, "{integer}")?;
+
                 // Keep 15, f64::DIGITS
-                let full_fraction = fraction.map(|fraction| format!("{fraction:.15}"));
-                let fraction = full_fraction
-                    .as_ref()
-                    .map(|full_fraction| {
-                        let digits = (f64::DIGITS as usize).min(DECIMALS);
-                        &full_fraction[1..digits + 2]
-                    })
-                    .unwrap_or_default();
-
-                let separator_before_custom_unit = if self.custom_unit.is_some() && unit.is_none() {
-                    self.separator
-                } else {
-                    ""
+                #[cfg(feature = "std")]
+                {
+                    let full_fraction = _fraction.map(|fraction| format!("{fraction:.15}"));
+                    let fraction = full_fraction
+                        .as_ref()
+                        .map(|full_fraction| {
+                            let digits = (f64::DIGITS as usize).min(DECIMALS);
+                            &full_fraction[1..digits + 2]
+                        })
+                        .unwrap_or_default();
+                    write!(f, "{fraction}")?;
                 };
-                let custom_unit = self.custom_unit.unwrap_or_default();
-                let separator_before_unit = if unit.is_some() { self.separator } else { "" };
-                let unit = unit.unwrap_or_default();
 
-                write!(
-                    f,
-                    "{integer}{fraction}{separator_before_unit}{unit}{separator_before_custom_unit}{custom_unit}",
-                )
+                if unit.is_some() {
+                    write!(f, "{}{}", self.separator, unit.unwrap())?;
+                }
+
+                if self.custom_unit.is_some() {
+                    if unit.is_none() {
+                        write!(f, "{}", self.separator)?;
+                    }
+
+                    write!(f, "{}", self.custom_unit.unwrap())?;
+                };
             }
+            #[cfg(feature = "std")]
             FormatType::Float { number, unit } => {
                 // Keep 15, f64::DIGITS
                 let number = format!("{number:.15}");
                 let digits = (f64::DIGITS as usize).min(DECIMALS);
                 let number = &number[1..digits + 2];
+                write!(f, "{number}")?;
 
-                let separator_before_custom_unit = if self.custom_unit.is_some() && unit.is_none() {
-                    self.separator
-                } else {
-                    ""
+                if unit.is_some() {
+                    write!(f, "{}{}", self.separator, unit.unwrap())?;
+                }
+
+                if self.custom_unit.is_some() {
+                    if unit.is_none() {
+                        write!(f, "{}", self.separator)?;
+                    }
+
+                    write!(f, "{}", self.custom_unit.unwrap())?;
                 };
-                let custom_unit = self.custom_unit.unwrap_or_default();
-                let separator_before_unit = if unit.is_some() { self.separator } else { "" };
-                let unit = unit.unwrap_or_default();
-
-                write!(f, "{number}{separator_before_unit}{unit}{separator_before_custom_unit}{custom_unit}",)
             }
             FormatType::Scientific {
-                coefficient: value,
+                coefficient,
                 exponent,
             } => {
-                let separator_before_custom_unit = if self.custom_unit.is_some() {
-                    self.separator
-                } else {
-                    ""
-                };
-                let custom_unit = self.custom_unit.unwrap_or_default();
+                #[cfg(not(feature = "std"))]
+                write!(f, "{coefficient}")?;
 
-                write!(
-                    f,
-                    "{value}e{exponent}{separator_before_custom_unit}{custom_unit}",
-                )
+                #[cfg(feature = "std")]
+                {
+                    // Keep 15, f64::DIGITS
+                    let coefficient = format!("{coefficient:.15}");
+                    let digits = (f64::DIGITS as usize).min(DECIMALS);
+                    let coefficient = &coefficient[..digits + 2];
+                    write!(f, "{coefficient}")?;
+                }
+
+                write!(f, "e{exponent}")?;
+
+                if self.custom_unit.is_some() {
+                    write!(f, "{}{}", self.separator, self.custom_unit.unwrap())?;
+                };
             }
-        }
+        };
+
+        Ok(())
     }
 }
 
@@ -495,6 +553,7 @@ enum FormatType<const DECIMALS: usize> {
         unit: Option<&'static str>,
     },
 
+    #[cfg(feature = "std")]
     /// General
     Float {
         /// The integer part.
