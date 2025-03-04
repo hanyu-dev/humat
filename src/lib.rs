@@ -404,8 +404,7 @@ impl<const DECIMALS: usize> fmt::Display for FormatResult<DECIMALS> {
             write!(f, "-")?;
         }
 
-        let custom_unit = self.custom_unit.unwrap_or_default();
-        match &self.result {
+        match self.result {
             FormatType::General {
                 integer,
                 fraction,
@@ -421,16 +420,18 @@ impl<const DECIMALS: usize> fmt::Display for FormatResult<DECIMALS> {
                     })
                     .unwrap_or_default();
 
-                let separator_before_unit = if (*unit).is_some() {
+                let separator_before_custom_unit = if self.custom_unit.is_some() && unit.is_none() {
                     self.separator
                 } else {
                     ""
                 };
-                let unit = (*unit).unwrap_or_default();
+                let custom_unit = self.custom_unit.unwrap_or_default();
+                let separator_before_unit = if unit.is_some() { self.separator } else { "" };
+                let unit = unit.unwrap_or_default();
 
                 write!(
                     f,
-                    "{integer}{fraction}{separator_before_unit}{unit}{custom_unit}",
+                    "{integer}{fraction}{separator_before_unit}{unit}{separator_before_custom_unit}{custom_unit}",
                 )
             }
             FormatType::Float { number, unit } => {
@@ -439,14 +440,16 @@ impl<const DECIMALS: usize> fmt::Display for FormatResult<DECIMALS> {
                 let digits = (f64::DIGITS as usize).min(DECIMALS);
                 let number = &number[1..digits + 2];
 
-                let separator_before_unit = if (*unit).is_some() {
+                let separator_before_custom_unit = if self.custom_unit.is_some() && unit.is_none() {
                     self.separator
                 } else {
                     ""
                 };
-                let unit = (*unit).unwrap_or_default();
+                let custom_unit = self.custom_unit.unwrap_or_default();
+                let separator_before_unit = if unit.is_some() { self.separator } else { "" };
+                let unit = unit.unwrap_or_default();
 
-                write!(f, "{number}{separator_before_unit}{unit}{custom_unit}",)
+                write!(f, "{number}{separator_before_unit}{unit}{separator_before_custom_unit}{custom_unit}",)
             }
             FormatType::Scientific {
                 coefficient: value,
@@ -457,6 +460,7 @@ impl<const DECIMALS: usize> fmt::Display for FormatResult<DECIMALS> {
                 } else {
                     ""
                 };
+                let custom_unit = self.custom_unit.unwrap_or_default();
 
                 write!(
                     f,
