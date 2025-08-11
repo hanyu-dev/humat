@@ -1,8 +1,9 @@
 # HUMAT - Human Formatter
 
-![Crates.io Version](https://img.shields.io/crates/v/humat)
-![Documentation](https://img.shields.io/docsrs/humat)
-![GitHub Tag](https://img.shields.io/github/v/tag/hanyu-dev/humat)
+[![Crates.io Version](https://img.shields.io/crates/v/humat)](https://crates.io/crates/humat)
+[![Documentation](https://img.shields.io/docsrs/humat)](https://docs.rs/humat)
+[![License](https://img.shields.io/crates/l/humat)](https://github.com/hanyu-dev/humat/blob/main/LICENSE)
+[![GitHub Tag](https://img.shields.io/github/v/tag/hanyu-dev/humat)](https://github.com/hanyu-dev/humat/tags)
 
 Formatting numbers for us, while the machines are still at bay.
 
