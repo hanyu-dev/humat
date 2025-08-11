@@ -1,0 +1,22 @@
+[package]
+name = "humat-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+arbitrary = { version = "1", features = ["derive"] }
+libfuzzer-sys = "0.4"
+
+[dependencies.humat]
+path = ".."
+
+[[bin]]
+name = "fuzz_humat"
+path = "fuzz_targets/fuzz_humat.rs"
+test = false
+doc = false
+bench = false
