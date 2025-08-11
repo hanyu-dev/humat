@@ -1,6 +1,8 @@
-//! Human-format-next
+#![doc = include_str!("../README.md")]
 
 #![cfg_attr(not(feature = "std"), no_std)]
+
+#![deprecated(note = "use `humat` instead, this crate will be removed in the future.")]
 
 use core::fmt;
 

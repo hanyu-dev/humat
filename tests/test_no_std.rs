@@ -1,6 +1,7 @@
 //! Tests
 
 #![cfg(not(feature = "std"))]
+#![allow(deprecated)]
 
 use human_format_next::Formatter;
 

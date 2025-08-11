@@ -1,5 +1,8 @@
 # human-format-next
 
+> [!CAUTION]
+> This crate is deprecated, use [`humat`](https://crates.io/crates/humat) instead.
+
 ![Crates.io Version](https://img.shields.io/crates/v/human-format-next)
 ![Documentation](https://img.shields.io/docsrs/human-format-next)
 ![GitHub Tag](https://img.shields.io/github/v/tag/hanyu-dev/human-format)
