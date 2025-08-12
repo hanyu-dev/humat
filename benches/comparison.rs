@@ -1,5 +1,7 @@
 #![allow(missing_docs)]
 #![allow(deprecated)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::unreadable_literal)]
 
 use std::hint::black_box;
 

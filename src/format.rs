@@ -15,7 +15,7 @@ use const_for::const_for;
 use crate::unit::RangedUnit;
 
 #[derive(Debug, Clone, Copy)]
-/// A collection of ranged units.
+/// Formatter of numbers for human-readable output.
 pub struct Formatter<const N: usize = 0> {
     /// Separator between numbers and units.
     ///
@@ -129,7 +129,7 @@ impl<const N: usize> Formatter<N> {
 
     #[inline]
     #[must_use]
-    /// Formats a number with fixed decimal places.
+    /// Formats a number, with fixed `DECIMAL_PLACES`.
     ///
     /// Any number type that implements the [`Humat`] trait is supported.
     pub fn format_fixed_dp<const DECIMAL_PLACES: usize>(&self, target: impl Humat) -> Formatted<DECIMAL_PLACES> {
@@ -147,7 +147,7 @@ impl<const N: usize> Formatter<N> {
 
     #[inline]
     #[must_use]
-    /// Formats an unsigned integer, with fixed decimal places.
+    /// Formats an unsigned integer, with fixed `DECIMAL_PLACES`.
     pub const fn format_uint_fixed_dp<const DECIMAL_PLACES: usize>(&self, target: u128) -> Formatted<DECIMAL_PLACES> {
         if target < self.ranged_units[0].range_max.get() {
             return Formatted {
@@ -214,21 +214,21 @@ impl<const N: usize> Formatter<N> {
 
     #[inline]
     #[must_use]
-    /// Formats a signed integer with fixed decimal places.
+    /// Formats a signed integer, with fixed `DECIMAL_PLACES`.
     pub const fn format_int_fixed_dp<const DECIMAL_PLACES: usize>(&self, target: i128) -> Formatted<DECIMAL_PLACES> {
         self.format_uint_fixed_dp(target.unsigned_abs()).with_sign(target >= 0)
     }
 
     #[inline]
     #[must_use]
-    /// Formats a `f64`, with default 2 decimal places.
+    /// Formats an `f64`, with default 2 decimal places.
     pub const fn format_double(&self, target: f64) -> Formatted {
         self.format_double_fixed_dp(target)
     }
 
     #[inline]
     #[must_use]
-    /// Formats a `f64`, with fixed `DECIMAL_PLACES`.
+    /// Formats an `f64`, with fixed `DECIMAL_PLACES`.
     pub const fn format_double_fixed_dp<const DECIMAL_PLACES: usize>(&self, target: f64) -> Formatted<DECIMAL_PLACES> {
         if !target.is_finite() {
             return Formatted {
@@ -285,11 +285,11 @@ impl<const N: usize> Formatter<N> {
 /// Helper trait for formatting numbers in a human-readable way.
 pub trait Humat {
     #[must_use]
-    /// Formats the number with default 2 decimal places.
+    /// Formats the number, with default 2 decimal places.
     fn humat<const N: usize>(self, formatter: &Formatter<N>) -> Formatted;
 
     #[must_use]
-    /// Formats the number with fixed decimal places.
+    /// Formats the number, with fixed `DECIMAL_PLACES`.
     fn humat_fixed_dp<const DECIMAL_PLACES: usize, const N: usize>(
         self,
         formatter: &Formatter<N>,
@@ -401,8 +401,19 @@ impl<const DECIMAL_PLACES: usize> Formatted<DECIMAL_PLACES> {
     }
 
     #[inline]
-    /// Set the decimal places for the formatted number.
     #[must_use]
+    /// Set the decimal places for the formatted number.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use humat::Formatter;
+    ///
+    /// let formatter = Formatter::SI;
+    /// let formatted = formatter.format(1_000);
+    /// assert_eq!(formatted.to_string(), "1.00 K"); // default 2 decimal places
+    /// assert_eq!(formatted.with_decimal_places::<4>().to_string(), "1.0000 K"); // with 4 decimal places
+    /// ```
     pub fn with_decimal_places<const NEW_DECIMAL_PLACES: usize>(self) -> Formatted<NEW_DECIMAL_PLACES> {
         #[allow(unsafe_code, reason = "compile time const value")]
         unsafe {
@@ -411,8 +422,8 @@ impl<const DECIMAL_PLACES: usize> Formatted<DECIMAL_PLACES> {
     }
 
     #[inline]
-    /// Returns the raw number as a `f64`.
     #[must_use]
+    /// Returns the raw number as a `f64`.
     pub const fn number(&self) -> f64 {
         match self.number {
             FormattedImpl::Int { positive, integer, .. } => integer as f64 * if positive { 1.0 } else { -1.0 },
@@ -421,21 +432,33 @@ impl<const DECIMAL_PLACES: usize> Formatted<DECIMAL_PLACES> {
     }
 
     #[inline]
-    /// Returns the separator between numbers and units.
     #[must_use]
+    /// Returns the separator between numbers and units.
     pub const fn separator(&self) -> &'static str {
         self.separator
     }
 
     #[inline]
-    /// Returns the custom unit attached after the abbreviated number's unit.
     #[must_use]
+    /// Returns the custom unit attached after the abbreviated number's unit.
     pub const fn custom_unit(&self) -> Option<&'static str> {
         self.custom_unit
     }
 
     #[cfg(feature = "alloc")]
+    #[allow(clippy::inherent_to_string_shadow_display)]
+    #[must_use]
     /// Converts the formatted number to a `String`.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use humat::Formatter;
+    ///
+    /// let formatter = Formatter::SI;
+    /// let formatted = formatter.format(1_000);
+    /// assert_eq!(formatted.to_string(), "1.00 K");
+    /// ```
     pub fn to_string(&self) -> String {
         let separator = self.separator;
 
