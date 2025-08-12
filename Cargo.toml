@@ -1,6 +1,6 @@
 [package]
 name = "humat"
-version = "0.3.0-alpha.0"
+version = "0.3.0"
 edition = "2021"
 rust-version = "1.83.0"
 
@@ -16,9 +16,7 @@ repository = "https://github.com/hanyu-dev/humat"
 [dependencies]
 const_for = "0.1.4"
 pastey  = "0.1.1"
-ryuu = { version = "2.0.0-alpha.2", default-features = false }
-# bytes = { version = "1.2.0", default-features = false, optional = true }
-# macro-toolset = { version = "0.8.2", default-features = false, features = ["feat-string"], optional = true }
+ryuu = { version = "=2.0.0-alpha.2", default-features = false }
 
 [dev-dependencies]
 criterion = "0.7.0"
