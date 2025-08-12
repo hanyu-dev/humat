@@ -85,9 +85,9 @@ impl<const N: usize> Formatter<N> {
     #[inline]
     #[must_use]
     /// See [`Formatter::custom`].
-    /// 
+    ///
     /// ## Safety
-    /// 
+    ///
     /// See [`Formatter::custom`].
     pub const unsafe fn custom_unchecked(ranged_units: &'static [RangedUnit; N]) -> Self {
         Self {
@@ -429,6 +429,7 @@ impl<const DECIMAL_PLACES: usize> Formatted<DECIMAL_PLACES> {
     pub const fn custom_unit(&self) -> Option<&'static str> {
         self.custom_unit
     }
+
 }
 
 impl<const DECIMAL_PLACES: usize> fmt::Display for Formatted<DECIMAL_PLACES> {
@@ -441,39 +442,27 @@ impl<const DECIMAL_PLACES: usize> fmt::Display for Formatted<DECIMAL_PLACES> {
                 integer,
                 unit,
             } => {
-                if !positive {
-                    f.write_str("-")?;
-                }
+                let sign = if positive { "" } else { "-" };
 
-                write!(f, "{integer}")?;
-
-                if let Some(unit) = unit {
-                    write!(f, "{separator}{unit}")?;
-                    if let Some(custom_unit) = self.custom_unit {
-                        write!(f, "{custom_unit}")?;
-                    }
-                } else if let Some(custom_unit) = self.custom_unit {
-                    write!(f, "{separator}{custom_unit}")?;
-                } else {
-                    // ...
+                match (unit, self.custom_unit) {
+                    (Some(unit), Some(custom_unit)) => write!(f, "{sign}{integer}{separator}{unit}{custom_unit}"),
+                    (Some(unit), None) => write!(f, "{sign}{integer}{separator}{unit}"),
+                    (None, Some(custom_unit)) => write!(f, "{sign}{integer}{separator}{custom_unit}"),
+                    (None, None) => write!(f, "{sign}{integer}"),
                 }
             }
             FormattedImpl::F64 { number, unit } => {
-                f.write_str(ryuu::Formatter::format_f64(number).as_str_fixed_dp::<DECIMAL_PLACES>())?;
+                let mut formatted = ryuu::Formatter::format_f64(number);
 
-                if let Some(unit) = unit {
-                    write!(f, "{separator}{unit}")?;
-                    if let Some(custom_unit) = self.custom_unit {
-                        write!(f, "{custom_unit}")?;
-                    }
-                } else if let Some(custom_unit) = self.custom_unit {
-                    write!(f, "{separator}{custom_unit}")?;
-                } else {
-                    // ...
+                let formatted = formatted.as_str_adjusting_dp::<DECIMAL_PLACES>();
+
+                match (unit, self.custom_unit) {
+                    (Some(unit), Some(custom_unit)) => write!(f, "{formatted}{separator}{unit}{custom_unit}"),
+                    (Some(unit), None) => write!(f, "{formatted}{separator}{unit}"),
+                    (None, Some(custom_unit)) => write!(f, "{formatted}{separator}{custom_unit}"),
+                    (None, None) => write!(f, "{formatted}"),
                 }
             }
         }
-
-        Ok(())
     }
 }
