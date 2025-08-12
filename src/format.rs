@@ -4,6 +4,10 @@
 
 mod preset;
 
+#[cfg(feature = "alloc")]
+use alloc::format;
+#[cfg(feature = "alloc")]
+use alloc::string::String;
 use core::fmt;
 
 use const_for::const_for;
@@ -430,8 +434,64 @@ impl<const DECIMAL_PLACES: usize> Formatted<DECIMAL_PLACES> {
         self.custom_unit
     }
 
+    #[cfg(feature = "alloc")]
+    /// Converts the formatted number to a `String`.
+    pub fn to_string(&self) -> String {
+        let separator = self.separator;
+
+        match self.number {
+            FormattedImpl::Int {
+                positive,
+                integer,
+                unit,
+            } => {
+                let sign = if positive { "" } else { "-" };
+
+                // TODO: fast number formatting?
+
+                match (unit, self.custom_unit) {
+                    (Some(unit), Some(custom_unit)) => format!("{sign}{integer}{separator}{unit}{custom_unit}"),
+                    (Some(unit), None) => format!("{sign}{integer}{separator}{unit}"),
+                    (None, Some(custom_unit)) => format!("{sign}{integer}{separator}{custom_unit}"),
+                    (None, None) => format!("{sign}{integer}"),
+                }
+            }
+            FormattedImpl::F64 { number, unit } => {
+                let mut result = String::with_capacity(8 + DECIMAL_PLACES);
+
+                let mut formatted = ryuu::Formatter::format_f64(number);
+
+                let formatted = formatted.as_str_adjusting_dp::<DECIMAL_PLACES>();
+
+                match (unit, self.custom_unit) {
+                    (Some(unit), Some(custom_unit)) => {
+                        result.push_str(formatted);
+                        result.push_str(separator);
+                        result.push_str(unit);
+                        result.push_str(custom_unit);
+                    }
+                    (Some(unit), None) => {
+                        result.push_str(formatted);
+                        result.push_str(separator);
+                        result.push_str(unit);
+                    }
+                    (None, Some(custom_unit)) => {
+                        result.push_str(formatted);
+                        result.push_str(separator);
+                        result.push_str(custom_unit);
+                    }
+                    (None, None) => {
+                        result.push_str(formatted);
+                    }
+                }
+
+                result
+            }
+        }
+    }
 }
 
+#[cfg(not(feature = "alloc"))]
 impl<const DECIMAL_PLACES: usize> fmt::Display for Formatted<DECIMAL_PLACES> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let separator = self.separator;
@@ -464,5 +524,12 @@ impl<const DECIMAL_PLACES: usize> fmt::Display for Formatted<DECIMAL_PLACES> {
                 }
             }
         }
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<const DECIMAL_PLACES: usize> fmt::Display for Formatted<DECIMAL_PLACES> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.to_string().as_str())
     }
 }

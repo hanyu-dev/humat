@@ -15,7 +15,7 @@ repository = "https://github.com/hanyu-dev/humat"
 
 [dependencies]
 const_for = "0.1.4"
-pastey  = "0.1.0"
+pastey  = "0.1.1"
 ryuu = { version = "2.0.0-alpha.2", default-features = false }
 # bytes = { version = "1.2.0", default-features = false, optional = true }
 # macro-toolset = { version = "0.8.2", default-features = false, features = ["feat-string"], optional = true }
@@ -26,6 +26,10 @@ human_format = "1.1.0"
 human-format-next = "0.2.3"
 
 [features]
+default = ["alloc"]
+
+# Enable `alloc` support.
+alloc = []
 
 [[bench]]
 name = "comparison"
